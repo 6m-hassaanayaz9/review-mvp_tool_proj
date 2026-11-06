@@ -1,0 +1,1047 @@
+<meta charset="utf-8">
+<title>Palm Oil Connector Walkthrough</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* A trading-desk deck: one slide on stage, controls docked at the bottom, palm green with a crude-oil orange accent. */
+:root {
+  --bg: #F6F2EA;
+  --surface: #FFFFFF;
+  --surface-2: #ECE6DA;
+  --fg: #15211A;
+  --muted: #625F55;
+  --line: #DDD5C6;
+  --brand: #1F4D33;
+  --brand-fg: #FFFFFF;
+  --brand-soft: #D5E6D9;
+  --brand-ink: #1F4D33;
+  --accent: #C9541F;
+  --accent-soft: #F7DDCD;
+  --good: #22744A;
+  --warn: #9A6410;
+  --bad: #AE3520;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1422; --surface: #151D2E; --surface-2: #1D273B; --fg: #E7ECF4; --muted: #9DA9BF;
+    --line: #2B3650; --brand: #2F6B47; --brand-fg: #FFFFFF; --brand-soft: #1F3A2A; --brand-ink: #8FD0A3;
+    --accent: #F0874A; --accent-soft: #3B2416; --good: #5CC488; --warn: #E2B14E; --bad: #F07B63;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1422; --surface: #151D2E; --surface-2: #1D273B; --fg: #E7ECF4; --muted: #9DA9BF;
+  --line: #2B3650; --brand: #2F6B47; --brand-fg: #FFFFFF; --brand-soft: #1F3A2A; --brand-ink: #8FD0A3;
+  --accent: #F0874A; --accent-soft: #3B2416; --good: #5CC488; --warn: #E2B14E; --bad: #F07B63;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.5; overflow: hidden; }
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.deck { height: 100%; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--bg); font-size: 13px; color: var(--muted);
+}
+.mark { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; color: var(--fg); font-size: 15px; min-width: 0; }
+.mark span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mark i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); display: inline-block; position: relative; }
+.mark i::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--brand); }
+.section-name { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+.stage { position: relative; flex: 1; min-height: 0; }
+.slide {
+  position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding-block: clamp(20px, 4vh, 44px); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  visibility: hidden; opacity: 0; transform: translateX(24px);
+  transition: opacity .45s ease, transform .45s ease, visibility 0s linear .45s;
+}
+.slide.before { transform: translateX(-24px); }
+.slide.active { visibility: visible; opacity: 1; transform: none; transition: opacity .45s ease, transform .45s ease, visibility 0s; }
+.wrap { max-width: 1160px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+
+.eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); font-weight: 600; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.3rem, 6vw, 4.8rem); line-height: 1.0; font-weight: 800; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.6rem); line-height: 1.08; font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 700; line-height: 1.25; }
+p { margin: 0; }
+.lede { font-size: clamp(1.02rem, 1.6vw, 1.2rem); color: var(--muted); max-width: 64ch; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.mono { font-family: var(--mono); font-size: .92em; }
+.head { display: flex; flex-direction: column; gap: 10px; }
+.note { font-size: 13.5px; color: var(--muted); max-width: 95ch; }
+
+.slide.active .rise { animation: rise .6s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--fg); white-space: nowrap; width: fit-content; }
+.pill.good { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.pill.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+.pill.accent { background: var(--accent-soft); color: var(--accent); }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-weight: 500; font-size: 14px; }
+.btn:hover { border-color: var(--brand); }
+.btn.primary { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 999px; width: fit-content; max-width: 100%; }
+.seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* 1 · Title */
+.title-wrap { gap: 30px; }
+.byline { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--brand); color: var(--brand-fg); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 20px; }
+.byline b { font-family: var(--display); font-size: 1.35rem; display: block; line-height: 1.2; }
+.board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.quote { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.quote .sym { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.quote .px { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.quote .px.na { color: var(--bad); }
+.quote .u { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.hint { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.hint kbd { font-family: var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--surface); }
+
+/* 2 · Components: the chain from question to answer, then the toolbox */
+.chain { display: flex; align-items: stretch; gap: 6px; }
+.node { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.node .k { font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.node .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--brand-ink); }
+.node b { font-family: var(--display); font-size: 1.05rem; line-height: 1.2; }
+.node p { font-size: 13.5px; color: var(--muted); }
+.node.core { background: var(--accent-soft); border-color: var(--accent); }
+.node.core .ic { background: var(--accent); color: #fff; }
+.arrow { flex: none; width: 26px; align-self: center; position: relative; height: 2px; background: var(--line); }
+.arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left-color: var(--line); border-right: 0; }
+.arrow i { position: absolute; top: -3px; left: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.slide.active .arrow i { animation: hop 2.2s ease-in-out infinite; animation-delay: calc(var(--d) * 240ms); }
+@keyframes hop { 0% { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: calc(100% - 8px); opacity: 0; } }
+
+.toolbox { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tool-tabs { display: grid; gap: 8px; }
+.tool-tab { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+.tool-tab b { font-weight: 600; font-size: 15px; }
+.tool-tab span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.tool-tab:hover { border-color: var(--brand); }
+.tool-tab[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); }
+.tool-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.tool-card .full { grid-column: 1 / -1; }
+.tap-hint { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; padding: 6px 12px 6px 10px; border-radius: 999px; border: 1px dashed var(--accent); background: var(--accent-soft); color: var(--fg); font-size: 13.5px; font-weight: 500; margin-bottom: 10px; }
+.tap-hint svg { color: var(--accent); flex: none; }
+.tap-hint .ping { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.slide.active .tap-hint .ping::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--accent); animation: ping 1.6s ease-out infinite; }
+@keyframes ping { from { transform: scale(1); opacity: .7; } to { transform: scale(3); opacity: 0; } }
+.diag-controls .tap-hint { margin-bottom: 0; }
+.btn.nudge { animation: nudge 1.8s ease-in-out infinite; }
+@keyframes nudge { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); } 50% { box-shadow: 0 0 0 7px var(--accent-soft); } }
+.prompt-col { display: flex; flex-direction: column; min-width: 0; }
+.lbl { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
+.asks { display: grid; gap: 8px; }
+.ask { justify-self: start; max-width: 100%; padding: 9px 14px; border-radius: 14px 14px 14px 4px; background: var(--surface-2); font-size: 14.5px; }
+.gets { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.gets li { display: flex; gap: 10px; align-items: baseline; font-size: 14.5px; }
+.gets li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--good); transform: translateY(-2px); }
+.callline { font-family: var(--mono); font-size: 13px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); overflow-x: auto; white-space: nowrap; }
+.callline em { font-style: normal; color: var(--accent); font-weight: 600; }
+
+/* 3 · Workflow: a replayed conversation with tool calls */
+.wf-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.wf-step { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; font-weight: 600; min-width: 0; transition: background .3s, border-color .3s; }
+.wf-step i { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-family: var(--display); font-size: 13px; background: var(--surface-2); color: var(--muted); transition: background .3s, color .3s; }
+.wf-step.on { border-color: var(--accent); background: var(--accent-soft); }
+.wf-step.on i, .wf-step.done i { background: var(--accent); color: #fff; }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.prompts { display: grid; gap: 8px; }
+.prompt { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 5px; }
+.prompt:hover { border-color: var(--brand); }
+.prompt[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); }
+.prompt b { font-weight: 500; font-size: 14.5px; line-height: 1.35; }
+.chat { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); min-width: 0; overflow: hidden; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.chat-head b { color: var(--fg); font-size: 14px; }
+.msgs { display: flex; flex-direction: column; gap: 10px; padding: 16px; height: 440px; overflow-y: auto; }
+.msg { max-width: 88%; flex-shrink: 0; animation: pop .35s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.msg.user { align-self: flex-end; background: var(--brand); color: var(--brand-fg); padding: 10px 14px; border-radius: 16px 16px 4px 16px; font-size: 15px; }
+.msg.gpt { align-self: flex-start; background: var(--surface-2); padding: 11px 14px; border-radius: 16px 16px 16px 4px; font-size: 15px; }
+.msg.gpt .na { color: var(--bad); font-weight: 600; }
+.msg.think { align-self: flex-start; font-size: 13.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.dots { display: inline-flex; gap: 3px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.msg.tool { align-self: stretch; max-width: 100%; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; font-family: var(--mono); font-size: 12.5px; }
+.msg.tool .th { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--surface-2); font-weight: 600; }
+.msg.tool .th span { color: var(--muted); font-weight: 500; }
+.msg.tool.call { border-color: var(--accent); }
+.msg.tool.call .th { background: var(--accent-soft); color: var(--accent); }
+.msg.tool pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; line-height: 1.55; max-height: 190px; overflow-y: auto; }
+.msg.tool .nul { color: var(--bad); font-weight: 600; }
+.msg.tool .key { color: var(--brand-ink); }
+
+/* 4 · Diagram */
+.diag-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.diag { display: block; width: 100%; min-width: 760px; height: auto; }
+.diag .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.diag .box.group { fill: var(--surface-2); stroke: none; }
+.diag .chip { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; transition: fill .3s, stroke .3s; }
+.diag .dash { stroke-dasharray: 6 5; }
+.diag text { fill: var(--fg); font-family: var(--body); font-size: 14px; }
+.diag .t-head { font-family: var(--display); font-weight: 700; font-size: 16px; }
+.diag .t-sub { fill: var(--muted); font-size: 12.5px; }
+.diag .t-mono { font-family: var(--mono); font-size: 12.5px; }
+.diag .edge { stroke: var(--line); stroke-width: 2.5; fill: none; transition: stroke .3s; }
+.diag .hot .box, .diag .hot .chip, .diag .box.hot, .diag .chip.hot { fill: var(--accent-soft); stroke: var(--accent); }
+.diag .bad .box, .diag .bad .chip, .diag .box.bad, .diag .chip.bad { fill: color-mix(in srgb, var(--bad) 14%, var(--surface)); stroke: var(--bad); }
+.diag .edge.hot { stroke: var(--accent); }
+.diag #pkt circle { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
+.diag #pkt { transition: transform .7s cubic-bezier(.4,.1,.2,1); }
+.diag #pkt.fail circle { fill: var(--bad); }
+.diag-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.caption { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-height: 4.4em; }
+.caption .n { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--accent); padding-top: 2px; white-space: nowrap; }
+
+/* 5 · Services */
+.svc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.svc { transition: opacity .3s, transform .3s; }
+.svc[hidden] { display: none !important; }
+.svc .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.svc .cat { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.svc b { font-family: var(--display); font-size: 1.05rem; line-height: 1.2; }
+.svc p { font-size: 14px; color: var(--muted); }
+.svc .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+
+/* 6 · Costs */
+.cost-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.clines { display: grid; gap: 8px; }
+.cline { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 128px; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.cline .nm { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+.cline .nm small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.range { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); }
+.range i { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--brand); min-width: 8px; transition: left .5s cubic-bezier(.2,.7,.2,1), width .5s cubic-bezier(.2,.7,.2,1); }
+:root[data-theme="dark"] .range i { background: var(--brand-ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .range i { background: var(--brand-ink); } }
+.range.open i { background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 10px); }
+.cline .val { font-family: var(--mono); font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.cline .val.q { color: var(--warn); }
+.total { display: flex; flex-direction: column; gap: 6px; }
+.total .big { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.scale { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 128px; gap: 12px; padding-inline: 14px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.scale div { display: flex; justify-content: space-between; }
+
+/* 7 · Effort */
+.eff-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.eff-stats .big { font-family: var(--display); font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.05; font-weight: 800; }
+.eff-stats .hl { border-color: var(--accent); background: var(--accent-soft); }
+.eff-body { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.eff-body p { margin: 0; max-width: 62ch; }
+.eff-h { font-family: var(--display); font-size: 1.15rem; }
+.months { display: grid; grid-template-columns: 1.4fr 1fr .8fr; gap: 6px; margin-top: 6px; }
+.months .m { border-radius: 8px; padding: 10px 12px; background: var(--brand-soft); font-size: 13.5px; font-weight: 600; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.months .m span { font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.months .m.research { background: var(--accent-soft); outline: 1px solid var(--accent); }
+.months .m.soft { background: var(--surface-2); }
+.budget { margin-top: auto; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--accent); display: flex; flex-direction: column; gap: 2px; }
+.budget b { font-family: var(--display); font-size: 1.1rem; color: var(--accent); }
+.budget span { font-size: 14px; color: var(--muted); }
+.eff-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.hbars { display: grid; gap: 7px; }
+.hb { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr) 46px; gap: 12px; align-items: center; font-size: 14px; }
+.hb .track { height: 14px; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
+.hb .track i { display: block; height: 100%; background: var(--brand); border-radius: 7px; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+:root[data-theme="dark"] .hb .track i { background: var(--brand-ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hb .track i { background: var(--brand-ink); } }
+.hb.zero { opacity: .45; }
+.hb .v { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+.stat b { font-family: var(--display); font-size: clamp(2.4rem, 4.4vw, 3.4rem); line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rate { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); }
+.rate input { border: 0; background: transparent; width: 100%; font-family: var(--mono); font-size: 16px; outline: none; }
+.rate span { font-family: var(--mono); color: var(--muted); font-size: 14px; white-space: nowrap; }
+.weeks { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; }
+.weeks i { height: 22px; border-radius: 4px; background: var(--brand); opacity: .85; }
+.weeks i.pilot { background: var(--accent); }
+.weeks i.test { opacity: .55; }
+.weeks i.disc { opacity: .35; }
+
+/* 8 · Questions */
+.qs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: q; }
+.qs li { counter-increment: q; }
+.qs button { width: 100%; text-align: left; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 14px; align-items: start; padding: 13px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); cursor: pointer; }
+.qs button::before { content: counter(q); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-family: var(--display); font-weight: 800; }
+.qs button b { display: block; font-weight: 600; }
+.qs button .qd { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+.qs button[aria-pressed="true"] { border-color: var(--good); background: color-mix(in srgb, var(--good) 9%, var(--surface)); }
+.qs button[aria-pressed="true"]::before { content: "✓"; background: var(--good); }
+.qcount { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+/* 9 · Thanks */
+.thanks { text-align: center; align-items: center; }
+.thanks h1 { font-size: clamp(3rem, 11vw, 8rem); }
+.thanks .row { justify-content: center; }
+.drops { display: flex; gap: 10px; justify-content: center; }
+.drops i { width: 14px; height: 18px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: var(--accent); opacity: .85; }
+.slide.active .drops i { animation: drip 2.4s ease-in-out infinite; animation-delay: calc(var(--d) * 180ms); }
+@keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.next-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: left; width: 100%; max-width: 920px; }
+.next-steps .card .n { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 600; }
+
+/* Bottom bar + overview */
+.bottombar {
+  display: flex; align-items: center; gap: 12px;
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--line); background: var(--bg);
+}
+.progress { flex: 1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .45s ease; }
+.counter { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: center; }
+.navbtn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; display: grid; place-items: center; font-size: 18px; flex: none; }
+.navbtn:disabled { opacity: .35; cursor: default; }
+.overview { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; z-index: 5;
+  padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.ov-grid { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.ov-card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 92px; }
+.ov-card .n { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.ov-card b { font-family: var(--display); font-size: 16px; line-height: 1.2; }
+.ov-card.cur { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-soft); }
+
+@media (max-width: 960px) {
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .toolbox, .chat-layout, .cost-layout, .eff-layout, .eff-body, .eff-stats, .months { grid-template-columns: minmax(0, 1fr); }
+  .chain { flex-direction: column; }
+  .arrow { transform: rotate(90deg); margin-block: 12px; }
+  .wf-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .msgs { height: 400px; }
+  .chat { order: -1; }
+  .prompts { grid-auto-flow: column; grid-auto-columns: minmax(240px, 70%); overflow-x: auto; padding-bottom: 6px; }
+  .svc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .next-steps { grid-template-columns: minmax(0, 1fr); }
+  .wrap { justify-content: flex-start; }
+}
+@media (max-width: 560px) {
+  .svc-grid, .tool-card { grid-template-columns: minmax(0, 1fr); }
+  .wf-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cline, .scale { grid-template-columns: minmax(0, 1fr) 104px; }
+  .cline .range, .scale .sc-bar { display: none; }
+  .hb { grid-template-columns: minmax(0, 1fr) 46px; }
+  .hb .track { grid-column: 1 / -1; grid-row: 2; }
+  .section-name { display: none; }
+  .seg { border-radius: 14px; }
+  .node { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 12px 14px; }
+  .node .k { display: none; }
+  .node p { flex-basis: 100%; }
+  .arrow { margin-block: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide.active, .diag #pkt, .range i, .hb .track i { transition: none; }
+  .slide.active .rise, .slide.active .drops i, .slide.active .arrow i, .msg { animation: none; }
+}
+</style>
+
+<div class="deck">
+  <header class="topbar">
+    <div class="mark"><i aria-hidden="true"></i><span>Palm Oil Market Data Connector</span></div>
+    <div class="section-name" id="sectionName">Introduction</div>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- 1 · Title -->
+    <section class="slide" id="title" data-section="Introduction" data-title="Project and presenter" aria-label="Slide 1: Project and presenter">
+      <div class="wrap title-wrap">
+        <div class="head">
+          <div class="eyebrow rise">Project proposal · November 2026</div>
+          <h1 class="rise">Palm Oil Market Data Connector</h1>
+          <p class="lede rise">Exact-contract futures prices for your palm oil briefing GPT: five benchmark markets, the right contract every day, and N/A instead of a wrong number.</p>
+        </div>
+        <div class="byline rise">
+          <div class="avatar" aria-hidden="true">HA</div>
+          <div><b>M. Hassaan Ayaz</b><span class="muted">Python and AI engineer · presenting</span></div>
+        </div>
+        <div class="rise">
+          <div class="row" style="justify-content: space-between; margin-bottom: 10px;">
+            <span class="eyebrow" style="color: var(--muted)">The five markets covered</span>
+          </div>
+          <div class="board" id="board"></div>
+        </div>
+        <p class="hint rise">Navigate with <kbd>←</kbd> <kbd>→</kbd> or swipe · <kbd>O</kbd> for all slides</p>
+      </div>
+    </section>
+
+    <!-- 2 · Components -->
+    <section class="slide" id="components" data-section="Components" data-title="Main components" aria-label="Slide 2: Main components">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">02 · Main components</div>
+          <h2 class="rise">From a question in ChatGPT to a verified price</h2>
+        </div>
+        <div class="chain rise" id="chain"></div>
+        <div class="toolbox rise">
+          <div>
+            <div class="lbl">The toolbox · 6 read-only tools</div>
+            <div class="tap-hint"><span class="ping" aria-hidden="true"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v6"/><path d="M13 10.5V9a2 2 0 0 1 4 0v3"/><path d="M17 11a2 2 0 0 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4.3 15a2 2 0 0 1 3.4-2L9 14.5"/></svg><span>Click a tool to see its details</span></div>
+            <div class="tool-tabs" id="toolTabs" role="group" aria-label="Tools"></div>
+          </div>
+          <div class="card tool-card" id="toolCard" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · Overall workflow -->
+    <section class="slide" id="workflow" data-section="Workflow" data-title="Overall workflow" aria-label="Slide 3: Overall workflow">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">03 · Overall workflow</div>
+          <h2 class="rise">Ask a question, watch the GPT call the tools</h2>
+        </div>
+        <div class="wf-steps rise" id="wfSteps">
+          <div class="wf-step"><i>1</i>You ask</div>
+          <div class="wf-step"><i>2</i>GPT picks a tool</div>
+          <div class="wf-step"><i>3</i>Tool call</div>
+          <div class="wf-step"><i>4</i>Verified data back</div>
+          <div class="wf-step"><i>5</i>GPT answers</div>
+        </div>
+        <div class="chat-layout">
+          <div class="prompt-col rise">
+            <div class="tap-hint"><span class="ping" aria-hidden="true"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v6"/><path d="M13 10.5V9a2 2 0 0 1 4 0v3"/><path d="M17 11a2 2 0 0 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4.3 15a2 2 0 0 1 3.4-2L9 14.5"/></svg><span>Click a question to see the sample output</span></div>
+            <div class="prompts" id="prompts" role="group" aria-label="Example questions"></div>
+          </div>
+          <div class="chat rise">
+            <div class="chat-head"><b>Palm Oil Briefing GPT</b><span>Example replay · sample values</span></div>
+            <div class="msgs" id="msgs" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Workflow diagram -->
+    <section class="slide" id="diagram" data-section="Workflow" data-title="Workflow diagram" aria-label="Slide 4: Workflow diagram">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">04 · Workflow diagram</div>
+          <h2 class="rise">Follow one request through the system</h2>
+        </div>
+        <div class="diag-controls rise">
+          <div class="seg" role="group" aria-label="Scenario" id="scenarioSeg">
+            <button type="button" data-s="ok" aria-pressed="true">Normal quote · WTI</button>
+            <button type="button" data-s="stale" aria-pressed="false">Stale data · FCPO</button>
+            <button type="button" data-s="nolic" aria-pressed="false">No licence · DCE</button>
+          </div>
+          <div class="row">
+            <div class="tap-hint"><span class="ping" aria-hidden="true"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v6"/><path d="M13 10.5V9a2 2 0 0 1 4 0v3"/><path d="M17 11a2 2 0 0 1 4 0v4a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4.3 15a2 2 0 0 1 3.4-2L9 14.5"/></svg><span>Press ▶ Play to watch the request</span></div>
+            <button type="button" class="btn" id="stepBtn">Next step</button>
+            <button type="button" class="btn primary nudge" id="playBtn">▶ Play</button>
+          </div>
+        </div>
+        <div class="diag-wrap rise">
+          <svg class="diag" id="diag" viewBox="0 0 1000 470" role="img" aria-labelledby="diagTitle">
+            <title id="diagTitle">Custom GPT calls the API server, which uses domain services, storage and vendor adapters</title>
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+            </defs>
+            <path class="edge" id="e-gpt-api" d="M180 235 H240" marker-end="url(#arr)"/>
+            <path class="edge" id="e-api-dom" d="M430 235 H490" marker-end="url(#arr)"/>
+            <path class="edge" id="e-dom-store" d="M490 400 H430" marker-end="url(#arr)"/>
+            <path class="edge" id="e-dom-a1" d="M710 75 H770" marker-end="url(#arr)"/>
+            <path class="edge" id="e-dom-a2" d="M710 170 H770" marker-end="url(#arr)"/>
+            <path class="edge" id="e-dom-a3" d="M710 265 H770" marker-end="url(#arr)"/>
+
+            <g id="n-gpt"><rect class="box" x="20" y="185" width="160" height="100" rx="12"/>
+              <text class="t-head" x="100" y="228" text-anchor="middle">Custom GPT</text>
+              <text class="t-sub" x="100" y="250" text-anchor="middle">ChatGPT Business</text></g>
+
+            <g id="n-api"><rect class="box" x="240" y="140" width="190" height="190" rx="12"/>
+              <text class="t-head" x="335" y="172" text-anchor="middle">API server</text>
+              <rect class="chip" id="c-rest" x="256" y="188" width="158" height="36" rx="8"/><text class="t-mono" x="335" y="211" text-anchor="middle">REST /v1 · Actions</text>
+              <rect class="chip" id="c-mcp" x="256" y="232" width="158" height="36" rx="8"/><text class="t-mono" x="335" y="255" text-anchor="middle">MCP /mcp · agents</text>
+              <rect class="chip" id="c-auth" x="256" y="276" width="158" height="36" rx="8"/><text class="t-mono" x="335" y="299" text-anchor="middle">API key check</text></g>
+
+            <g id="n-store"><rect class="box" x="240" y="360" width="190" height="84" rx="12"/>
+              <text class="t-head" x="335" y="394" text-anchor="middle">PostgreSQL + Redis</text>
+              <text class="t-sub" x="335" y="416" text-anchor="middle">locks · audit log · cache</text></g>
+
+            <rect class="box group" x="490" y="30" width="220" height="414" rx="14"/>
+            <text class="t-head" x="600" y="62" text-anchor="middle">Domain services</text>
+            <g id="c-sel"><rect class="chip" x="506" y="80" width="188" height="44" rx="9"/><text x="600" y="107" text-anchor="middle">Contract selection</text></g>
+            <g id="c-lock"><rect class="chip" x="506" y="134" width="188" height="44" rx="9"/><text x="600" y="161" text-anchor="middle">Same-day lock</text></g>
+            <g id="c-sess"><rect class="chip" x="506" y="188" width="188" height="44" rx="9"/><text x="600" y="215" text-anchor="middle">Market sessions</text></g>
+            <g id="c-val"><rect class="chip" x="506" y="242" width="188" height="44" rx="9"/><text x="600" y="269" text-anchor="middle">Validation gate</text></g>
+            <g id="c-fresh"><rect class="chip" x="506" y="296" width="188" height="44" rx="9"/><text x="600" y="323" text-anchor="middle">Freshness label</text></g>
+            <g id="c-route"><rect class="chip" x="506" y="350" width="188" height="44" rx="9"/><text x="600" y="377" text-anchor="middle">Source routing</text></g>
+
+            <g id="n-a1"><rect class="box" x="770" y="35" width="210" height="80" rx="12"/>
+              <text class="t-head" x="875" y="68" text-anchor="middle">Databento</text>
+              <text class="t-sub" x="875" y="90" text-anchor="middle">CBOT ZL · NYMEX CL · ICE Brent</text></g>
+            <g id="n-a2"><rect class="box" x="770" y="130" width="210" height="80" rx="12"/>
+              <text class="t-head" x="875" y="163" text-anchor="middle">Barchart</text>
+              <text class="t-sub" x="875" y="185" text-anchor="middle">BMD FCPO</text></g>
+            <g id="n-a3"><rect class="box" x="770" y="225" width="210" height="80" rx="12"/>
+              <text class="t-head" x="875" y="258" text-anchor="middle">DCE licensed feed</text>
+              <text class="t-sub" x="875" y="280" text-anchor="middle">ICE · LSEG · CQG (to choose)</text></g>
+
+            <g id="pkt" style="transform: translate(100px, 300px)"><circle r="10" cx="0" cy="0"/></g>
+          </svg>
+        </div>
+        <div class="caption rise" aria-live="polite"><span class="n" id="capN">Step 0 / 8</span><span id="capT">Pick a scenario, then press Play or Next step.</span></div>
+      </div>
+    </section>
+
+    <!-- 5 · Services -->
+    <section class="slide" id="services" data-section="Services" data-title="Services required" aria-label="Slide 5: Services required">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">05 · Services required</div>
+          <h2 class="rise">What the service runs on</h2>
+        </div>
+        <div class="row rise" style="justify-content: space-between">
+          <div class="seg" role="group" aria-label="Filter services" id="svcSeg">
+            <button type="button" data-f="all" aria-pressed="true">All</button>
+            <button type="button" data-f="data" aria-pressed="false">Market data</button>
+            <button type="button" data-f="infra" aria-pressed="false">Infrastructure</button>
+            <button type="button" data-f="openai" aria-pressed="false">OpenAI and access</button>
+          </div>
+        </div>
+        <div class="svc-grid rise" id="svcGrid"></div>
+      </div>
+    </section>
+
+    <!-- 6 · API costs -->
+    <section class="slide" id="costs" data-section="Costs" data-title="API and running costs" aria-label="Slide 6: API costs">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">06 · API and running costs</div>
+          <h2 class="rise">Monthly costs, by option</h2>
+        </div>
+        <div class="seg rise" role="group" aria-label="Option" id="tierSeg">
+          <button type="button" data-t="saving" aria-pressed="true">Cost-saving (delayed / end-of-day)</button>
+          <button type="button" data-t="prod" aria-pressed="false">Production (recommended)</button>
+        </div>
+        <div class="cost-layout">
+          <div class="rise">
+            <div class="scale" aria-hidden="true"><span></span><div class="sc-bar"><span>$0</span><span>$1,000</span><span>$2,000</span></div><span></span></div>
+            <div class="clines" id="clines"></div>
+          </div>
+          <div class="card total rise">
+            <span class="eyebrow" style="color: var(--muted)">Known monthly total</span>
+            <span class="big" id="costTotal">$739 – $2,450</span>
+            <span class="pill warn" id="costPlus">+ DCE and exchange quotes</span>
+            <p class="small muted" id="costNote"></p>
+            <hr style="border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%">
+            <p class="small muted">Indicative public prices, October 2026. You pay vendors and exchanges directly under your own agreements. Firm figures come from vendor quotes in the first week.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 · Development effort -->
+    <section class="slide" id="effort" data-section="Development" data-title="Development time and cost" aria-label="Slide 7: Development time and cost">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">07 · Development cost</div>
+          <h2 class="rise">Time and cost</h2>
+        </div>
+        <div class="eff-stats rise">
+          <div class="card"><span class="eyebrow" style="color: var(--muted)">Timeline</span><b class="big">2–3 months</b><span class="small muted">From kick-off to handover</span></div>
+          <div class="card"><span class="eyebrow" style="color: var(--muted)">Total effort</span><b class="big">≈ 70 hours</b><span class="small muted">Everything included</span></div>
+          <div class="card hl"><span class="eyebrow" style="color: var(--muted)">One-time cost</span><b class="big">≈ $800</b><span class="small muted">USD, for the full build</span></div>
+        </div>
+        <div class="eff-body rise">
+          <div class="card">
+            <b class="eff-h">Where the time goes</b>
+            <p>The longest part is <strong>not the development</strong>. It is researching the best APIs for live market data and the custom details you need (exact contracts, volume, settlements), and agreeing their licences.</p>
+            <p>If we find the right APIs quickly, the rest is straightforward and gets done fast.</p>
+            <div class="months" aria-hidden="true">
+              <div class="m research"><span>Month 1</span>API research and licences</div>
+              <div class="m"><span>Month 2</span>Build and testing</div>
+              <div class="m soft"><span>Month 3</span>Pilot and handover</div>
+            </div>
+          </div>
+          <div class="card">
+            <b class="eff-h">The 70 hours include</b>
+            <ul class="gets">
+              <li>API research and vendor setup</li>
+              <li>The data service and the six tools</li>
+              <li>Contract selection and price checks</li>
+              <li>Testing</li>
+              <li>Connecting your Custom GPT</li>
+              <li>Pilot week, fixes and handover</li>
+            </ul>
+            <div class="budget"><b>What’s your budget?</b><span>Let me know and I’ll shape the scope around it.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · Questions -->
+    <section class="slide" id="questions" data-section="Questions" data-title="Questions" aria-label="Slide 8: Questions">
+      <div class="wrap">
+        <div class="head">
+          <div class="eyebrow rise">08 · Questions</div>
+          <h2 class="rise">What I need from you</h2>
+          <p class="lede rise">Tick each one as we answer it. <span class="qcount" id="qcount">0 of 3 answered</span></p>
+        </div>
+        <ol class="qs rise" id="qs"></ol>
+      </div>
+    </section>
+
+    <!-- 9 · Thanks -->
+    <section class="slide" id="thanks" data-section="Thank you" data-title="Thank you" aria-label="Slide 9: Thank you">
+      <div class="wrap thanks">
+        <div class="drops rise" aria-hidden="true"><i style="--d:0"></i><i style="--d:1"></i><i style="--d:2"></i><i style="--d:3"></i><i style="--d:4"></i></div>
+        <h1 class="rise">Thank you</h1>
+        <p class="lede rise">M. Hassaan Ayaz · [Phone] · [Email]</p>
+        <div class="next-steps">
+          <div class="card rise"><span class="n">NEXT · 1</span><b>Answer the six questions</b><span class="small muted">They set the data licence tier and the final price.</span></div>
+          <div class="card rise"><span class="n">NEXT · 2</span><b>Vendor trials and quotes</b><span class="small muted">Barchart, Databento and a DCE feed, in the Discovery week.</span></div>
+          <div class="card rise"><span class="n">NEXT · 3</span><b>Demo in week 3</b><span class="small muted">Your Custom GPT pulling live, checked prices.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="overview" id="overview" hidden>
+      <div class="ov-grid" id="ovGrid"></div>
+    </div>
+  </main>
+
+  <footer class="bottombar">
+    <button type="button" class="navbtn" id="prev" aria-label="Previous slide">←</button>
+    <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+    <span class="counter" id="counter">1 / 9</span>
+    <button type="button" class="btn" id="ovBtn" aria-pressed="false">Overview</button>
+    <button type="button" class="navbtn" id="next" aria-label="Next slide">→</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- navigation
+  const slides = $$('.slide');
+  let cur = 0;
+  const onEnter = {};  // slide id -> run once the slide is shown
+  slides.forEach((s) => $$('.rise', s).forEach((el, i) => el.style.setProperty('--i', i)));
+
+  function go(i) {
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, k) => {
+      s.classList.toggle('active', k === i);
+      s.classList.toggle('before', k < i);
+      s.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+      s.inert = k !== i;
+    });
+    if (cur !== i && slides[cur].id === 'diagram') stopPlay();
+    cur = i;
+    if (onEnter[slides[i].id]) onEnter[slides[i].id]();
+    $('#counter').textContent = (i + 1) + ' / ' + slides.length;
+    $('#bar').style.width = ((i + 1) / slides.length * 100) + '%';
+    $('#sectionName').textContent = slides[i].dataset.section;
+    $('#prev').disabled = i === 0;
+    $('#next').disabled = i === slides.length - 1;
+    slides[i].scrollTop = 0;
+    try { history.replaceState(null, '', '#' + slides[i].id); } catch (e) {}
+    if (!$('#overview').hidden) toggleOverview(false);
+  }
+  $('#prev').addEventListener('click', () => go(cur - 1));
+  $('#next').addEventListener('click', () => go(cur + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key === 'o' || e.key === 'O') toggleOverview();
+    else if (e.key === 'Escape' && !$('#overview').hidden) toggleOverview(false);
+  });
+  let tx = null, ty = null;
+  $('#stage').addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  $('#stage').addEventListener('touchend', (e) => {
+    if (tx === null || e.target.closest('input, .diag-wrap, .seg, .prompts, .msgs')) { tx = null; return; }
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(cur + (dx < 0 ? 1 : -1));
+    tx = null;
+  });
+
+  const ovGrid = $('#ovGrid');
+  slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'ov-card';
+    b.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + ' · ' + esc(s.dataset.section) + '</span><b>' + esc(s.dataset.title) + '</b>';
+    b.addEventListener('click', () => { toggleOverview(false); go(i); });
+    ovGrid.appendChild(b);
+  });
+  function toggleOverview(force) {
+    const ov = $('#overview');
+    const show = force === undefined ? ov.hidden : force;
+    ov.hidden = !show;
+    $('#ovBtn').setAttribute('aria-pressed', String(show));
+    $('#ovBtn').textContent = show ? 'Close' : 'Overview';
+    $$('.ov-card', ovGrid).forEach((c, i) => c.classList.toggle('cur', i === cur));
+    if (show) $$('.ov-card', ovGrid)[cur].focus();
+  }
+  $('#ovBtn').addEventListener('click', () => toggleOverview());
+
+  function segment(el, attr, onChange) {
+    $$('button', el).forEach((b) => b.addEventListener('click', () => {
+      $$('button', el).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      onChange(b.dataset[attr]);
+    }));
+  }
+
+  // ---------- 1 · the five markets
+  const board = [
+    ['Bursa Malaysia', 'Crude palm oil', 'FCPO', 'MYR / tonne', ''],
+    ['Dalian (DCE)', 'Palm olein', 'P', 'CNY / tonne', ''],
+    ['CBOT', 'Soybean oil', 'ZL', 'US cents / lb', ''],
+    ['NYMEX', 'WTI crude', 'CL', 'USD / barrel', ''],
+    ['ICE', 'Brent crude', 'B', 'USD / barrel', ''],
+  ];
+  $('#board').innerHTML = board.map(([m, s, p, u, c]) =>
+    '<div class="quote"><span class="sym">' + esc(m) + ' · ' + esc(s) + '</span><span class="px ' + c + '">' + esc(p) + '</span><span class="u">' + esc(u) + '</span></div>').join('');
+
+  // ---------- 2 · components: the chain and the toolbox
+  const icon = (d) => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const chain = [
+    { k: 'Step 1', n: 'You', p: 'Ask in plain English inside ChatGPT.', i: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>' },
+    { k: 'Step 2', n: 'Custom GPT', p: 'Understands the question and picks the right tool.', i: '<path d="M12 3a6 6 0 0 1 6 6c0 2.5-1.5 4-3 5v3H9v-3c-1.5-1-3-2.5-3-5a6 6 0 0 1 6-6z"/><path d="M9 21h6"/>' },
+    { k: 'Step 3', n: 'Tools (MCP)', p: 'Six read-only tools: the GPT’s only way to get prices.', i: '<path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-3-3z"/>', core: true },
+    { k: 'Step 4', n: 'Data service', p: 'Picks the right contract, checks the price, adds time and status.', i: '<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>' },
+    { k: 'Step 5', n: 'Licensed data', p: 'Five markets: Malaysian and Chinese palm oil, US soybean oil, WTI and Brent crude.', i: '<path d="M3 12h4l3-8 4 16 3-8h4"/>' },
+  ];
+  $('#chain').innerHTML = chain.map((c, k) =>
+    (k ? '<span class="arrow" aria-hidden="true" style="--d:' + k + '"><i></i></span>' : '') +
+    '<div class="node' + (c.core ? ' core' : '') + '"><span class="k">' + c.k + '</span><span class="ic">' + icon(c.i) + '</span><b>' + esc(c.n) + '</b><p>' + esc(c.p) + '</p></div>').join('');
+
+  const tools = [
+    { n: 'Today’s contracts', t: 'resolve_contracts', call: 'resolve_contracts()',
+      asks: ['Which contracts are we using today?', 'Why this month for soybean oil?'],
+      gets: ['The exact contract and month for each market', 'Why each one was chosen', 'A lock ID that keeps them fixed for the whole day'] },
+    { n: 'All prices at once', t: 'get_snapshot', call: 'get_snapshot(contract_lock_id="2026-11-02-pkt-7F3A2C")',
+      asks: ['Give me the numbers for the morning briefing.', 'Closing prices for today’s report.'],
+      gets: ['Price, currency and unit for all five markets', 'When each price is from, in Pakistan time', 'Open or closed, and live, delayed or settlement', 'N/A with a reason when a price can’t be verified'] },
+    { n: 'One price', t: 'get_contract_quote', call: 'get_contract_quote(market_id="ICE_BRENT", contract_lock_id="…")',
+      asks: ['What is Brent at right now?', 'What’s the March 2027 WTI contract at?'],
+      gets: ['One price for one exact contract', 'Its time, market status and freshness', 'Never swaps in a different month'] },
+    { n: 'Is the market open?', t: 'get_market_status', call: 'get_market_status(market_id="BMD_FCPO")',
+      asks: ['Is Malaysia trading now?', 'When does the Chinese market reopen?'],
+      gets: ['Open or closed right now', 'Next open and close, in Pakistan time', 'Which trading day it counts towards'] },
+    { n: 'Official settlement', t: 'get_latest_settlement', call: 'get_latest_settlement(market_id="NYMEX_WTI", contract_lock_id="…")',
+      asks: ['What did WTI settle at on Friday?', 'Last official close for palm oil?'],
+      gets: ['The exchange’s official settlement price', 'The trading date it belongs to'] },
+    { n: 'Is the data OK?', t: 'health_check', call: 'health_check()',
+      asks: ['Are all the price feeds working?', 'Why is palm olein showing N/A?'],
+      gets: ['Which data sources are connected', 'Any feed that is down or delayed'] },
+  ];
+  $('#toolTabs').innerHTML = tools.map((t, k) =>
+    '<button type="button" class="tool-tab" data-k="' + k + '" aria-pressed="' + (k === 0) + '"><b>' + esc(t.n) + '</b><span>' + esc(t.t) + '</span></button>').join('');
+  function showTool(k) {
+    const t = tools[k];
+    $$('.tool-tab').forEach((b, j) => b.setAttribute('aria-pressed', String(j === k)));
+    $('#toolCard').innerHTML =
+      '<div class="full row" style="justify-content: space-between"><h3 style="font-size: 1.35rem">' + esc(t.n) + '</h3><span class="pill good">read-only</span></div>' +
+      '<div><div class="lbl">Ask things like</div><div class="asks">' + t.asks.map((a) => '<span class="ask">“' + esc(a) + '”</span>').join('') + '</div></div>' +
+      '<div><div class="lbl">You get back</div><ul class="gets">' + t.gets.map((g) => '<li>' + esc(g) + '</li>').join('') + '</ul></div>' +
+      '<div class="full"><div class="lbl">What the GPT sends</div><div class="callline"><em>' + esc(t.t) + '</em>' + esc(t.call.slice(t.t.length)) + '</div></div>';
+  }
+  $$('.tool-tab').forEach((b) => b.addEventListener('click', () => showTool(+b.dataset.k)));
+  showTool(0);
+
+  // ---------- 3 · workflow: replay a conversation, tool calls included
+  const LOCK = '2026-11-02-pkt-7F3A2C';
+  const examples = [
+    { cat: ['good', 'Live price'], q: 'What’s Malaysian palm oil trading at right now?',
+      calls: [{ name: 'get_contract_quote', args: { market_id: 'BMD_FCPO', contract_lock_id: LOCK },
+        res: { contract: 'Jan 2027', price: 4012, currency: 'MYR', unit: 'tonne', market_status: 'open', freshness: 'live', time_pkt: '14:32' } }],
+      a: 'Malaysian crude palm oil (January 2027 contract) is trading at <b>MYR 4,012 per tonne</b>, live as of 14:32 Pakistan time.' },
+    { cat: ['good', 'Daily briefing'], q: 'Write today’s closing briefing.',
+      calls: [
+        { name: 'resolve_contracts', args: {}, res: { contract_lock_id: LOCK, locked_for: '2 Nov 2026 (PKT)', contracts: 5 } },
+        { name: 'get_snapshot', args: { contract_lock_id: LOCK }, res: [
+          { market: 'Malaysian palm oil', price: 4012, freshness: 'live' },
+          { market: 'Chinese palm olein', price: null, error: 'QUOTE_STALE' },
+          { market: 'US soybean oil', price: 65.9, freshness: 'latest_settlement' },
+          { market: 'WTI crude', price: 104.12, freshness: 'live' },
+          { market: 'Brent crude', price: 113.43, freshness: 'live' },
+        ] },
+      ],
+      a: '<b>Closing briefing · 2 Nov 2026, 19:00 PKT</b><br>Malaysian palm oil: MYR 4,012/t (live)<br>Chinese palm olein: <span class="na">N/A</span> (no verified price)<br>US soybean oil: 65.90 US¢/lb (settlement)<br>WTI crude: USD 104.12/bbl (live)<br>Brent crude: USD 113.43/bbl (live)' },
+    { cat: ['good', 'Market hours'], q: 'Is the Chinese market open right now?',
+      calls: [{ name: 'get_market_status', args: { market_id: 'DCE_PALM_OLEIN' },
+        res: { market_status: 'closed', next_open_pkt: '18:00', next_close_pkt: '20:00' } }],
+      a: 'Dalian is <b>closed</b> right now. Its evening session opens at 18:00 and closes at 20:00 Pakistan time.' },
+    { cat: ['good', 'Settlement'], q: 'What did WTI settle at on Friday?',
+      calls: [{ name: 'get_latest_settlement', args: { market_id: 'NYMEX_WTI', contract_lock_id: LOCK },
+        res: { contract: 'Dec 2026', settlement: 104.12, currency: 'USD', unit: 'barrel', trading_date: '2026-10-30' } }],
+      a: 'WTI’s December 2026 contract settled at <b>USD 104.12 per barrel</b> on Friday 30 October.' },
+    { cat: ['good', 'Contract info'], q: 'Which soybean oil contract are we tracking today, and why?',
+      calls: [{ name: 'resolve_contracts', args: { markets: ['CBOT_SOYAOIL'] },
+        res: { contract: 'Dec 2026', reason: 'most traded month this session', fixed_until: 'end of 2 Nov (PKT)' } }],
+      a: 'Today’s reports use the <b>December 2026</b> soybean oil contract, the most traded month this session. It stays fixed for the rest of the day, so every report compares the same contract.' },
+    { cat: ['good', 'Service status'], q: 'Are all the price feeds working?',
+      calls: [{ name: 'health_check', args: {}, res: { status: 'ok', feeds_connected: 5, feeds_down: [] } }],
+      a: 'Yes. All five price feeds are connected and the service is healthy.' },
+    { cat: ['bad', 'Not supported'], q: 'Will palm oil go up next week?', calls: [],
+      a: 'I can’t forecast prices. I only report verified prices, settlements and market hours. Would you like the latest palm oil price instead?' },
+  ];
+  $('#prompts').innerHTML = examples.map((e, k) =>
+    '<button type="button" class="prompt" data-k="' + k + '" aria-pressed="false"><span class="pill ' + e.cat[0] + '">' + esc(e.cat[1]) + '</span><b>' + esc(e.q) + '</b></button>').join('');
+
+  // Lists print one item per line, so a five-market snapshot reads like a table.
+  const jsonText = (o) => Array.isArray(o)
+    ? '[\n' + o.map((x) => '  ' + JSON.stringify(x).replace(/,"/g, ', "').replace(/":/g, '": ')).join(',\n') + '\n]'
+    : JSON.stringify(o, null, 2);
+  const jsonHTML = (o) => esc(jsonText(o))
+    .replace(/&quot;([a-z_]+)&quot;:/g, '<span class="key">&quot;$1&quot;</span>:')
+    .replace(/\bnull\b/g, '<span class="nul">null</span>');
+  const argText = (args) => {
+    const parts = Object.entries(args).map(([k, v]) => k + '=' + JSON.stringify(v));
+    return parts.length ? parts.join(', ') : '';
+  };
+  let timers = [];
+  const msgs = $('#msgs');
+  function add(cls, html) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + cls;
+    el.innerHTML = html;
+    msgs.appendChild(el);
+    msgs.scrollTop = msgs.scrollHeight;
+    return el;
+  }
+  function stepOn(n) {
+    $$('.wf-step').forEach((s, i) => { s.classList.toggle('on', i === n); s.classList.toggle('done', i < n); });
+  }
+  function playExample(k) {
+    timers.forEach(clearTimeout); timers = [];
+    $$('.prompt').forEach((b, j) => b.setAttribute('aria-pressed', String(j === k)));
+    msgs.innerHTML = '';
+    const ex = examples[k];
+    const gap = reduce ? 450 : 900;
+    let t = 0;
+    const at = (fn) => { t += gap; timers.push(setTimeout(fn, t)); };
+    stepOn(0); add('user', esc(ex.q));
+    let think;
+    at(() => { stepOn(1); think = add('think', '<span class="dots"><i></i><i></i><i></i></span>' + (ex.calls.length ? 'Choosing a tool…' : 'Checking the toolbox…')); });
+    ex.calls.forEach((c) => {
+      at(() => {
+        if (think) { think.remove(); think = null; }
+        stepOn(2);
+        add('tool call', '<div class="th">→ ' + esc(c.name) + '<span>tool call · MCP</span></div><pre>' + esc(c.name + '(' + argText(c.args) + ')') + '</pre>');
+      });
+      at(() => { stepOn(3); add('tool', '<div class="th">← result<span>verified, from the data service</span></div><pre>' + jsonHTML(c.res) + '</pre>'); });
+    });
+    if (!ex.calls.length) {
+      at(() => { if (think) think.remove(); stepOn(1); add('think', 'No tool answers forecasts, so no data is fetched.'); });
+    }
+    at(() => { stepOn(4); add('gpt', ex.a); });
+  }
+  $$('.prompt').forEach((b) => b.addEventListener('click', () => playExample(+b.dataset.k)));
+  let chatStarted = false;
+  onEnter.workflow = () => { if (!chatStarted) { chatStarted = true; playExample(1); } };
+
+  // ---------- 4 · request trace
+  // The packet rides on each box's left edge so it never covers a label.
+  const P = { gpt: [100, 300], api: [246, 206], auth: [246, 294], store: [240, 402], sel: [498, 102], lock: [498, 156],
+    sess: [498, 210], val: [498, 264], fresh: [498, 318], route: [498, 372], a1: [770, 75], a2: [770, 170], a3: [770, 265] };
+  const scen = {
+    ok: [
+      { at: 'gpt', hot: ['n-gpt'], t: 'The briefing GPT calls GET /v1/snapshot/{lock_id} with its API key.' },
+      { at: 'auth', hot: ['c-rest', 'c-auth', 'e-gpt-api'], t: 'The API server accepts the key and hands the request to the domain services.' },
+      { at: 'store', hot: ['n-store', 'e-dom-store', 'e-api-dom'], t: "Today's lock is read from PostgreSQL: WTI is fixed to CLZ26 for the whole PKT date." },
+      { at: 'sess', hot: ['c-sess'], t: 'NYMEX is open, so this is a live session for Monday’s trading date.' },
+      { at: 'route', hot: ['c-route'], t: 'Source routing: WTI comes from Databento.' },
+      { at: 'a1', hot: ['n-a1', 'e-dom-a1'], t: 'Databento returns the last trade for CLZ26 (kept in Redis for a few seconds).' },
+      { at: 'val', hot: ['c-val'], t: 'Validation: symbol CLZ26, currency USD, unit barrel and timestamp all check out.' },
+      { at: 'fresh', hot: ['c-fresh'], t: 'The trade is 4 seconds old, inside the allowed age, so it is labelled live.' },
+      { at: 'gpt', hot: ['n-gpt', 'e-gpt-api'], t: 'The GPT prints the WTI price with its unit, contract month (Dec 2026) and “live”.' },
+    ],
+    stale: [
+      { at: 'gpt', hot: ['n-gpt'], t: 'The GPT asks for the snapshot during the BMD afternoon session.' },
+      { at: 'auth', hot: ['c-rest', 'c-auth', 'e-gpt-api'], t: 'Key accepted.' },
+      { at: 'store', hot: ['n-store', 'e-dom-store', 'e-api-dom'], t: 'FCPO is locked to FCPOF27, the third eligible month.' },
+      { at: 'sess', hot: ['c-sess'], t: 'BMD is open, so the price must be recent.' },
+      { at: 'route', hot: ['c-route'], t: 'Source routing: FCPO comes from Barchart.' },
+      { at: 'a2', hot: ['n-a2', 'e-dom-a2'], t: 'Barchart answers, but its last FCPO update is 25 minutes old (feed delay or outage).' },
+      { at: 'val', hot: ['c-val'], t: 'Symbol, currency and unit are fine.' },
+      { at: 'fresh', hot: ['c-fresh'], bad: true, t: 'Older than the declared delay plus 2 minutes: marked stale, price removed.' },
+      { at: 'gpt', hot: ['n-gpt'], bad: true, t: 'The GPT receives price: null with QUOTE_STALE and prints N/A, never the old number as current.' },
+    ],
+    nolic: [
+      { at: 'gpt', hot: ['n-gpt'], t: 'The GPT asks for the snapshot.' },
+      { at: 'auth', hot: ['c-rest', 'c-auth', 'e-gpt-api'], t: 'Key accepted.' },
+      { at: 'store', hot: ['n-store', 'e-dom-store', 'e-api-dom'], t: 'No DCE contract in today’s lock.' },
+      { at: 'sel', hot: ['c-sel'], t: 'The most-active rule needs DCE volume data to choose a contract.' },
+      { at: 'route', hot: ['c-route'], t: 'Source routing: no licensed DCE feed is configured yet.' },
+      { at: 'a3', hot: ['n-a3', 'e-dom-a3'], bad: true, t: 'Without a licence there is no data, so nothing is guessed or scraped.' },
+      { at: 'val', hot: ['c-val'], bad: true, t: 'The quote is built as unavailable.' },
+      { at: 'fresh', hot: ['c-fresh'], bad: true, t: 'Freshness: unavailable.' },
+      { at: 'gpt', hot: ['n-gpt'], bad: true, t: 'The GPT receives ENTITLEMENT_REQUIRED and prints N/A for DCE palm olein.' },
+    ],
+  };
+  let sKey = 'ok', step = -1, timer = null;
+  const pkt = $('#pkt');
+  function place(pt) { pkt.style.transform = 'translate(' + pt[0] + 'px,' + pt[1] + 'px)'; }
+  function clearHot() { $$('#diag .hot, #diag .bad').forEach((el) => el.classList.remove('hot', 'bad')); }
+  function render() {
+    const steps = scen[sKey];
+    clearHot();
+    pkt.classList.remove('fail');
+    if (step < 0) {
+      place(P.gpt);
+      $('#capN').textContent = 'Step 0 / ' + steps.length;
+      $('#capT').textContent = 'Pick a scenario, then press Play or Next step.';
+      $('#stepBtn').textContent = 'Next step';
+      return;
+    }
+    const s = steps[step];
+    place(P[s.at]);
+    s.hot.forEach((id) => { const el = document.getElementById(id); if (el) el.classList.add(s.bad && !id.startsWith('e-') ? 'bad' : 'hot'); });
+    if (s.bad) pkt.classList.add('fail');
+    $('#capN').textContent = 'Step ' + (step + 1) + ' / ' + steps.length;
+    $('#capT').textContent = s.t;
+    $('#stepBtn').textContent = step === steps.length - 1 ? 'Start over' : 'Next step';
+  }
+  function next() {
+    step = step >= scen[sKey].length - 1 ? -1 : step + 1;
+    render();
+  }
+  function stopPlay() {
+    clearInterval(timer); timer = null;
+    $('#playBtn').textContent = '▶ Play';
+  }
+  $('#stepBtn').addEventListener('click', () => { stopPlay(); next(); });
+  $('#playBtn').addEventListener('click', () => {
+    $('#playBtn').classList.remove('nudge');
+    if (timer) { stopPlay(); return; }
+    if (step >= scen[sKey].length - 1) step = -1;
+    $('#playBtn').textContent = '❚❚ Pause';
+    next();
+    timer = setInterval(() => {
+      if (step >= scen[sKey].length - 1) { stopPlay(); return; }
+      next();
+    }, reduce ? 2600 : 2000);
+  });
+  segment($('#scenarioSeg'), 's', (k) => { stopPlay(); sKey = k; step = -1; render(); });
+  render();
+
+  // ---------- 5 · services
+  const services = [
+    { c: 'data', n: 'Databento', d: 'Exact-contract data for CBOT soybean oil, NYMEX WTI and ICE Brent: trades, volume, open interest, settlements.', tags: [['', 'Production'], ['warn', 'Paid · free credits to start']] },
+    { c: 'data', n: 'Barchart OnDemand', d: 'BMD crude palm oil (FCPO) quotes, and DCE settlements as a fallback.', tags: [['', 'Production'], ['warn', 'Paid · from ~$500/mo']] },
+    { c: 'data', n: 'Licensed DCE feed', d: 'Real-time DCE palm olein through ICE Consolidated Feed, LSEG or CQG, chosen in Discovery.', tags: [['', 'Production'], ['warn', 'Quote required']] },
+    { c: 'infra', n: 'Container hosting', d: 'Runs the API server and the always-on data ingestor, e.g. Google Cloud Run.', tags: [['', 'Pilot and production']] },
+    { c: 'infra', n: 'PostgreSQL', d: 'Daily contract locks and the audit log of every quote returned.', tags: [['', 'Production']] },
+    { c: 'infra', n: 'Redis', d: 'Short-lived quote cache, so reports answer within the 3-second target.', tags: [['', 'Production']] },
+    { c: 'infra', n: 'Secrets and monitoring', d: 'Vendor keys in a secret manager; uptime checks and stale-data alerts.', tags: [['', 'Production']] },
+    { c: 'openai', n: 'ChatGPT Business + Custom GPT', d: 'Your briefing GPT imports our OpenAPI spec as an Action. You already have this.', tags: [['good', 'Existing'], ['', 'Edit access needed']] },
+    { c: 'openai', n: 'API key or OAuth', d: 'An API key for the pilot; an OAuth provider (Auth0, WorkOS, Entra ID) only if you want per-user audit.', tags: [['', 'Pilot: key'], ['', 'Optional: OAuth']] },
+    { c: 'openai', n: 'Domain and HTTPS', d: 'A public HTTPS address for the GPT to call.', tags: [['', 'All stages']] },
+  ];
+  const catName = { data: 'Market data', infra: 'Infrastructure', openai: 'OpenAI and access' };
+  $('#svcGrid').innerHTML = services.map((s, k) =>
+    '<div class="card svc" data-c="' + s.c + '"><div class="top"><span class="cat">' + catName[s.c] + '</span></div><b>' + esc(s.n) + '</b><p>' + esc(s.d) + '</p><div class="tags">' +
+    s.tags.map(([c, t]) => '<span class="pill ' + c + '">' + esc(t) + '</span>').join('') + '</div></div>').join('');
+  let svcF = 'all';
+  function filterSvc() {
+    $$('.svc').forEach((el) => {
+      el.hidden = !(svcF === 'all' || el.dataset.c === svcF);
+    });
+  }
+  segment($('#svcSeg'), 'f', (f) => { svcF = f; filterSvc(); });
+
+  // ---------- 6 · costs (USD / month). [low, high, open-ended?] or a string for "quote required"
+  const lines = [
+    { n: 'Market data: CME + ICE', s: 'Databento', saving: [199, 199], prod: [199, 1750] },
+    { n: 'Market data: Bursa FCPO', s: 'Barchart OnDemand', saving: [500, 500, 'open'], prod: [500, 500, 'open'] },
+    { n: 'Market data: DCE real-time', s: 'ICE, LSEG or CQG', saving: [0, 0, 'Settlement only'], prod: 'Quote' },
+    { n: 'Exchange licences', s: 'CME, ICE, Bursa, DCE', saving: 'Quote', prod: 'Quote' },
+    { n: 'Cloud hosting', s: 'Containers, database, cache', saving: [20, 60], prod: [40, 150] },
+    { n: 'Monitoring and identity', s: 'Usually free tiers', saving: [0, 25], prod: [0, 50] },
+    { n: 'OpenAI', s: 'ChatGPT Business', saving: [0, 0, 'Already paid'], prod: [0, 0, 'Already paid'] },
+  ];
+  const MAX = 2000;
+  const money = (n) => '$' + n.toLocaleString('en-US');
+  $('#clines').innerHTML = lines.map((l, k) =>
+    '<div class="cline" data-k="' + k + '"><span class="nm">' + esc(l.n) + '<small>' + esc(l.s) + '</small></span><div class="range"><i></i></div><span class="val"></span></div>').join('');
+  const tierNote = {
+    saving: 'Delayed and end-of-day data. Cheaper, but prices are not live and DCE shows the settlement only.',
+    prod: 'Live licensed data for all five markets. The DCE licence and exchange fees usually decide the final total.',
+  };
+  function setTier(t) {
+    let lo = 0, hi = 0, open = false, quote = false;
+    $$('.cline').forEach((row) => {
+      const v = lines[+row.dataset.k][t];
+      const bar = $('.range', row), i = $('i', bar), val = $('.val', row);
+      if (typeof v === 'string') {
+        quote = true;
+        bar.classList.add('open');
+        i.style.left = '0%'; i.style.width = '100%';
+        val.textContent = 'Quote required'; val.className = 'val q';
+        return;
+      }
+      const [a, b, flag] = v;
+      lo += a; hi += b;
+      if (flag === 'open') open = true;
+      bar.classList.toggle('open', flag === 'open');
+      i.style.left = (a / MAX * 100) + '%';
+      i.style.width = flag === 'open' ? (100 - a / MAX * 100) + '%' : (Math.max(b - a, 0) / MAX * 100) + '%';
+      val.className = 'val';
+      val.textContent = b === 0 ? (flag && flag !== 'open' ? flag : '$0') : (a === b ? money(a) + (flag === 'open' ? '+' : '') : money(a) + '–' + money(b).slice(1));
+    });
+    $('#costTotal').textContent = hi === 0 ? '$0' : (lo === hi ? money(lo) : money(lo) + ' – ' + money(hi)) + (open ? '+' : '');
+    $('#costPlus').hidden = !quote;
+    $('#costPlus').textContent = t === 'prod' ? '+ DCE and exchange quotes' : '+ exchange quotes';
+    $('#costNote').textContent = tierNote[t];
+  }
+  segment($('#tierSeg'), 't', setTier);
+  setTier('saving');
+
+  // ---------- 8 · questions
+  const qs = [
+    ['For selection of APIs, do you already have preferred APIs?', 'Any market data vendors you already use or would like us to use.'],
+    ['Do you have your own auth system for your workflows?', 'For example Entra ID, Okta or Auth0, so the tools can use your existing sign-in.'],
+    ['Do you hold existing data licences?', 'LSEG, Bloomberg, ICE or CQG licences we could extend.'],
+  ];
+  const qKey = 'palm-deck-answered-v2';
+  let answered = [];
+  try { answered = JSON.parse(localStorage.getItem(qKey) || '[]').filter((k) => k < qs.length); } catch (e) {}
+  $('#qs').innerHTML = qs.map(([q, d], k) =>
+    '<li><button type="button" data-k="' + k + '" aria-pressed="' + answered.includes(k) + '"><div><b>' + esc(q) + '</b><span class="qd">' + esc(d) + '</span></div></button></li>').join('');
+  function qCount() {
+    const n = $$('#qs button[aria-pressed="true"]').length;
+    $('#qcount').textContent = n + ' of ' + qs.length + ' answered';
+  }
+  $$('#qs button').forEach((b) => b.addEventListener('click', () => {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on));
+    const k = +b.dataset.k;
+    answered = on ? [...new Set([...answered, k])] : answered.filter((x) => x !== k);
+    try { localStorage.setItem(qKey, JSON.stringify(answered)); } catch (e) {}
+    qCount();
+  }));
+  qCount();
+
+  // ---------- start
+  const fromHash = () => slides.findIndex((s) => '#' + s.id === location.hash);
+  addEventListener('hashchange', () => { const i = fromHash(); if (i >= 0 && i !== cur) go(i); });
+  const start = fromHash();
+  go(start >= 0 ? start : 0);
+})();
+</script>
